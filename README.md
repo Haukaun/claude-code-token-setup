@@ -1,10 +1,12 @@
 # claude-code-token-setup
 
-Token-efficient CaveCrew subagents for [Claude Code](https://claude.com/claude-code) — the Claude Code counterpart of [`opencode-token-setup`](https://github.com/Haukaun/opencode-token-setup).
+A batteries-included, token-efficient [Claude Code](https://claude.com/claude-code) setup — the Claude Code counterpart of [`opencode-token-setup`](https://github.com/Haukaun/opencode-token-setup). Clone it and one command reproduces the whole thing on a fresh machine: subagents, plugins, the graphify knowledge graph, and hooks.
 
-Four specialized subagents route grunt work (locate, edit) to **Haiku** and reserve **Sonnet** for judgment, each returning caveman-compressed output so your main thread stays cheap. All read agents query the **graphify** knowledge graph before touching files.
+The core idea: route grunt work (locate, edit) to **Haiku** and reserve **Sonnet** for judgment, with every subagent returning caveman-compressed output so the main thread stays cheap. All read agents query the **graphify** graph before touching files.
 
 ## What's included
+
+**CaveCrew subagents** (`agents/`, copied to `~/.claude/agents/`):
 
 | Agent | Model | Job |
 |---|---|---|
@@ -13,13 +15,24 @@ Four specialized subagents route grunt work (locate, edit) to **Haiku** and rese
 | `cavecrew-reviewer` | sonnet | Diff/branch review. One line per finding, severity-tagged. |
 | `cavecrew-investigator-deep` | sonnet | Cross-module tracing. Spawned only when the investigator escalates. |
 
-Planning and brainstorming are intentionally **not** included — the [superpowers](https://github.com/obra/superpowers-marketplace) plugin already ships `brainstorming` + `writing-plans`, and Claude Code has a built-in Plan agent.
+**Plugins** (installed from their marketplaces via `claude plugin`; their hooks, commands, and skills come bundled):
+
+- [superpowers](https://github.com/obra/superpowers-marketplace) — brainstorming, writing-plans, TDD, debugging, code-review skills.
+- [ponytail](https://github.com/DietrichGebert/ponytail) — lazy-code discipline (YAGNI, stdlib-first).
+- [headroom](https://github.com/chopratejas/headroom) — *optional, opt-in* context-compression proxy (see below).
+
+**Skills** — [graphify](https://github.com/Haukaun) knowledge graph, installed via its own CLI.
+
+**Hooks** — a graphify-first `UserPromptSubmit` hint, merged into `~/.claude/settings.json` only in projects that have a `graphify-out/` (a fast no-op elsewhere).
+
+Planning/brainstorming agents are intentionally **not** shipped — superpowers already covers them, and Claude Code has a built-in Plan agent.
 
 ## Prerequisites
 
-- [Claude Code](https://claude.com/claude-code)
-- [`just`](https://just.systems) (`brew install just` / `winget install Casey.Just`)
-- [graphify](https://github.com/Haukaun/opencode-token-setup) CLI on `PATH` (the agents call `graphify query/path/explain`; without it they fall back to grep)
+- [Claude Code](https://claude.com/claude-code) (the `claude` CLI on `PATH`)
+- [`just`](https://just.systems) — `brew install just` / `winget install Casey.Just`
+- [`uv`](https://astral.sh/uv) — for the graphify (and optional headroom) installs
+- `python3` — for the settings-hook merge (standard on macOS/Linux)
 
 ## Install
 
@@ -27,25 +40,46 @@ Planning and brainstorming are intentionally **not** included — the [superpowe
 git clone <this-repo>
 cd claude-code-token-setup
 
-# macOS / Linux
-just mac-install
+# macOS / Linux — everything except headroom
+just mac-install-all
 
 # Windows (PowerShell)
-just win-install
+just win-install-all
 ```
 
-Install copies `agents/*.md` into `~/.claude/agents/`. Restart Claude Code to pick them up. There is no config merging — Claude Code loads agent `.md` files directly.
+Restart Claude Code afterward to load the new agents, plugins, and hooks.
+
+Install piece by piece if you prefer:
+
+```sh
+just mac-install-agents     # CaveCrew subagents only
+just mac-install-plugins    # superpowers + ponytail
+just mac-install-graphify   # graphify CLI + skill
+just mac-install-hooks      # graphify hint hook (idempotent, non-clobbering)
+just mac-install-headroom   # optional, heavy — see below
+```
+
+`just --list` shows every recipe (each has a `win-` twin).
+
+### headroom is opt-in
+
+headroom is excluded from `*-install-all` on purpose: it pulls a **~2GB** PyPI stack (torch/ML) and is a CLI-only proxy whose payoff is situational. Install it deliberately if you want it:
+
+```sh
+just mac-install-headroom
+```
+
+Then it needs activating per its own docs (`headroom doctor`, then `headroom wrap claude`). It does not integrate with Claude Code Desktop.
 
 ## Uninstall
 
 ```sh
-just mac-uninstall   # or: just win-uninstall
+just mac-uninstall-all       # removes agents, plugins, graphify, hook (leaves headroom)
+just mac-uninstall-headroom  # if you installed it
 ```
+
+The hook uninstall removes **only** this repo's hook (matched by a `graphify-out` marker) and leaves the rest of your `settings.json` untouched.
 
 ## Usage & cost model
 
-See [`docs/usage.md`](docs/usage.md). The short version: the savings come from the main thread **delegating** to the cheap agents (either automatically via their descriptions, or explicitly — "use cavecrew-investigator to …"), and from keeping the **graphify** graph fresh (`/graphify --update`) so context lookups hit the graph instead of loading files.
-
-## Relation to your global setup
-
-Complements, doesn't replace: **superpowers** (brainstorm/plan/TDD/debug/review skills), **ponytail** (lazy-code discipline), **graphify** (knowledge graph). These agents just add a cheap, compressed locate/edit/review tier on top.
+See [`docs/usage.md`](docs/usage.md). Short version: savings come from the main thread **delegating** to the cheap agents — automatically via their descriptions, or explicitly ("use cavecrew-investigator to …") — and from keeping the **graphify** graph fresh (`/graphify --update`) so context lookups hit the graph instead of loading files.

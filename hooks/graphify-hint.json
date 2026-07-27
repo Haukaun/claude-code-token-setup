@@ -1,0 +1,10 @@
+{
+  "_comment": "UserPromptSubmit hook: nudges graphify-first, but only in projects that actually have a graphify-out/ graph. Merged into ~/.claude/settings.json by scripts/merge_settings.py. Identified for removal by the 'graphify-out' marker in the command.",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "[ -d \"${CLAUDE_PROJECT_DIR:-$PWD}/graphify-out\" ] && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"This project uses graphify (knowledge graph in graphify-out/). For any question about the codebase, its architecture, files, or content, invoke the graphify skill FIRST (Skill tool, skill graphify) before other tools, treating the prompt as a graphify query.\"}}' || exit 0",
+      "statusMessage": "Loading graphify context"
+    }
+  ]
+}
