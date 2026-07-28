@@ -1,0 +1,11 @@
+{
+  "_comment": "PreToolUse hook: runs scripts/security_guard.py (installed to ~/.claude/hooks/) before every Bash tool call to block catastrophic commands and confirm risky ones. Merged into ~/.claude/settings.json by scripts/merge_settings.py; identified for removal by the 'security_guard' marker in the command.",
+  "matcher": "Bash",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "python3 \"$HOME/.claude/hooks/security_guard.py\"",
+      "statusMessage": "Security guard"
+    }
+  ]
+}

@@ -1,9 +1,12 @@
 # claude-code-token-setup — install/uninstall the full setup:
 #   agents  → copied into ~/.claude/agents/
 #   plugins → installed from their marketplaces via `claude plugin`
-#   skills  → graphify installed via its own CLI; plugin skills come with plugins
-#   hooks   → graphify hint merged into ~/.claude/settings.json (plugin hooks
-#             come with plugins); commands also ship inside their plugins
+#   skills  → graphify (own CLI) + find-skills/agent-browser/skill-creator via
+#             the `npx skills` CLI into ~/.claude/skills; plugin skills come with plugins
+#   rtk     → Rust CLI-output token-killer + its transparent Bash-rewrite hook
+#   hooks   → graphify hint + Bash security guard merged into
+#             ~/.claude/settings.json (plugin hooks come with plugins);
+#             commands also ship inside their plugins
 
 agents_dir := "agents"
 
@@ -15,9 +18,9 @@ default:
 # macOS / Linux
 # =====================================================================
 
-# Agents + plugins + graphify + hooks.
-mac-install-all: mac-install-plugins mac-install-graphify mac-install-agents mac-install-hooks
-    @echo "Done. Restart Claude Code to load agents, plugins, and hooks."
+# Agents + plugins + skills + graphify + rtk + hooks.
+mac-install-all: mac-install-plugins mac-install-skills mac-install-graphify mac-install-rtk mac-install-agents mac-install-hooks
+    @echo "Done. Restart Claude Code to load agents, plugins, skills, rtk, and hooks."
 
 # CaveCrew subagents → ~/.claude/agents/
 mac-install-agents:
@@ -25,13 +28,35 @@ mac-install-agents:
     cp {{agents_dir}}/*.md ~/.claude/agents/
     @echo "Installed CaveCrew agents."
 
-# superpowers + ponytail from their marketplaces.
+# superpowers + ponytail + caveman + i-have-adhd + claude-hud from their marketplaces.
 mac-install-plugins:
     claude plugin marketplace add obra/superpowers-marketplace || true
     claude plugin marketplace add DietrichGebert/ponytail || true
+    claude plugin marketplace add JuliusBrussee/caveman || true
+    claude plugin marketplace add ayghri/i-have-adhd || true
+    claude plugin marketplace add jarrodwatts/claude-hud || true
     claude plugin install superpowers
     claude plugin install ponytail
+    claude plugin install caveman@caveman
+    claude plugin install i-have-adhd@i-have-adhd
+    claude plugin install claude-hud@claude-hud
     @echo "Installed plugins (their hooks/commands/skills come bundled)."
+
+# Skills via the `npx skills` CLI (github.com/vercel-labs/skills), installed into
+# the user-global ~/.claude/skills. Requires Node/npx.
+mac-install-skills:
+    mkdir -p ~/.claude/skills
+    cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code
+    cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code
+    cd ~/.claude && npx -y skills add anthropics/skills --skill skill-creator --agent claude-code
+    @echo "Installed skills (find-skills, agent-browser, skill-creator)."
+
+# rtk — Rust CLI-output token-killer + its transparent Bash-rewrite hook.
+# https://github.com/rtk-ai/rtk . `rtk init -g` writes the global Claude hook.
+mac-install-rtk:
+    brew install rtk || curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
+    rtk init -g
+    @echo "Installed rtk + global hook. Restart Claude Code; verify with 'rtk init --show'."
 
 # graphify CLI + skill (knowledge graph). Requires uv (https://astral.sh/uv).
 mac-install-graphify:
@@ -39,13 +64,16 @@ mac-install-graphify:
     graphify install --platform claude
     @echo "Installed graphify CLI + skill."
 
-# graphify hint hook → ~/.claude/settings.json (idempotent, non-clobbering).
+# graphify hint hook + security guard + "model": "opusplan" → ~/.claude/settings.json
+# (idempotent, non-clobbering; model applies to CLI and desktop alike).
 mac-install-hooks:
+    mkdir -p ~/.claude/hooks
+    cp scripts/security_guard.py ~/.claude/hooks/
     python3 scripts/merge_settings.py
 
 # --- uninstalls ---
 
-mac-uninstall-all: mac-uninstall-hooks mac-uninstall-agents mac-uninstall-graphify mac-uninstall-plugins
+mac-uninstall-all: mac-uninstall-hooks mac-uninstall-agents mac-uninstall-graphify mac-uninstall-rtk mac-uninstall-skills mac-uninstall-plugins
     @echo "Removed setup."
 
 mac-uninstall-agents:
@@ -53,14 +81,37 @@ mac-uninstall-agents:
           ~/.claude/agents/cavecrew-builder.md \
           ~/.claude/agents/cavecrew-reviewer.md \
           ~/.claude/agents/cavecrew-investigator-deep.md
+    -rmdir ~/.claude/agents 2>/dev/null
     @echo "Removed CaveCrew agents."
 
 mac-uninstall-plugins:
     claude plugin uninstall superpowers || true
     claude plugin uninstall ponytail || true
+    claude plugin uninstall caveman || true
+    claude plugin uninstall i-have-adhd || true
+    claude plugin uninstall claude-hud || true
     claude plugin marketplace remove superpowers-marketplace || true
     claude plugin marketplace remove ponytail || true
+    claude plugin marketplace remove caveman || true
+    claude plugin marketplace remove i-have-adhd || true
+    claude plugin marketplace remove claude-hud || true
+    # Leftover ponytail state markers (safe: only touches ponytail's own files).
+    rm -f ~/.claude/.ponytail-active ~/.claude/.ponytail-statusline-nudged
     @echo "Removed plugins + marketplaces."
+
+# Best-effort: dir names follow whatever each skill CLI created under ~/.claude/skills.
+mac-uninstall-skills:
+    rm -rf ~/.claude/skills/find-skills ~/.claude/skills/agent-browser \
+           ~/.claude/skills/skill-creator
+    -rmdir ~/.claude/skills 2>/dev/null
+    @echo "Removed skills (best-effort)."
+
+# Best-effort: remove the rtk hook, the binary if brew-managed, and rtk's config.
+mac-uninstall-rtk:
+    rtk init -g --uninstall || true
+    brew uninstall rtk || true
+    rm -rf ~/.config/rtk "$HOME/Library/Application Support/rtk"
+    @echo "Removed rtk hook + binary + config (best-effort)."
 
 mac-uninstall-graphify:
     graphify uninstall || true
@@ -68,12 +119,14 @@ mac-uninstall-graphify:
 
 mac-uninstall-hooks:
     python3 scripts/purge_settings.py
+    rm -f ~/.claude/hooks/security_guard.py
+    -rmdir ~/.claude/hooks 2>/dev/null
 
 # =====================================================================
 # Windows (PowerShell)
 # =====================================================================
 
-win-install-all: win-install-plugins win-install-graphify win-install-agents win-install-hooks
+win-install-all: win-install-plugins win-install-skills win-install-graphify win-install-rtk win-install-agents win-install-hooks
     @echo "Done. Restart Claude Code."
 
 win-install-agents:
@@ -82,16 +135,33 @@ win-install-agents:
 win-install-plugins:
     -claude plugin marketplace add obra/superpowers-marketplace
     -claude plugin marketplace add DietrichGebert/ponytail
+    -claude plugin marketplace add JuliusBrussee/caveman
+    -claude plugin marketplace add ayghri/i-have-adhd
+    -claude plugin marketplace add jarrodwatts/claude-hud
     claude plugin install superpowers
     claude plugin install ponytail
+    claude plugin install caveman@caveman
+    claude plugin install i-have-adhd@i-have-adhd
+    claude plugin install claude-hud@claude-hud
+
+# Skills via `npx skills` into %USERPROFILE%\.claude\skills. Requires Node/npx.
+win-install-skills:
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\skills | Out-Null; Set-Location $env:USERPROFILE\.claude; npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code; npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code; npx -y skills add anthropics/skills --skill skill-creator --agent claude-code"
 
 win-install-graphify:
     powershell -NoProfile -Command "uv tool install graphifyy; graphify install --platform windows"
 
+# rtk — download the Windows release zip, put rtk.exe on PATH, then init the hook.
+# See https://github.com/rtk-ai/rtk/releases . Alternative: cargo install --git .
+win-install-rtk:
+    -cargo install --git https://github.com/rtk-ai/rtk
+    rtk init -g
+
 win-install-hooks:
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\hooks | Out-Null; Copy-Item scripts\security_guard.py $env:USERPROFILE\.claude\hooks\ -Force"
     python scripts/merge_settings.py
 
-win-uninstall-all: win-uninstall-hooks win-uninstall-agents win-uninstall-graphify win-uninstall-plugins
+win-uninstall-all: win-uninstall-hooks win-uninstall-agents win-uninstall-graphify win-uninstall-rtk win-uninstall-skills win-uninstall-plugins
     @echo "Removed setup."
 
 win-uninstall-agents:
@@ -100,11 +170,26 @@ win-uninstall-agents:
 win-uninstall-plugins:
     -claude plugin uninstall superpowers
     -claude plugin uninstall ponytail
+    -claude plugin uninstall caveman
+    -claude plugin uninstall i-have-adhd
+    -claude plugin uninstall claude-hud
     -claude plugin marketplace remove superpowers-marketplace
     -claude plugin marketplace remove ponytail
+    -claude plugin marketplace remove caveman
+    -claude plugin marketplace remove i-have-adhd
+    -claude plugin marketplace remove claude-hud
+    powershell -NoProfile -Command "'.ponytail-active','.ponytail-statusline-nudged' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\$_\" }"
+
+win-uninstall-skills:
+    powershell -NoProfile -Command "'find-skills','agent-browser','skill-creator' | ForEach-Object { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\skills\$_\" }"
+
+win-uninstall-rtk:
+    -rtk init -g --uninstall
+    powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:APPDATA\rtk\", \"$env:USERPROFILE\.config\rtk\""
 
 win-uninstall-graphify:
     -graphify uninstall
 
 win-uninstall-hooks:
     python scripts/purge_settings.py
+    powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue $env:USERPROFILE\.claude\hooks\security_guard.py"

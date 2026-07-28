@@ -2,7 +2,9 @@
 
 ## The cost model
 
-Two levers cut token cost in Claude Code; this setup pulls both.
+Three levers cut token cost in Claude Code; this setup pulls all of them. The
+third — **rtk** — is independent of the other two: it shrinks *shell output*
+rather than *how the model works*, so it stacks on top.
 
 1. **Per-agent model routing.** Each subagent pins its own `model:` in
    frontmatter. Grunt work runs on Haiku; only judgment/tracing runs on Sonnet.
@@ -18,6 +20,15 @@ Two levers cut token cost in Claude Code; this setup pulls both.
    return a caveman-compressed receipt. Your main thread — the priciest model,
    re-sent every turn — stays lean, so it processes far fewer tokens.
 
+3. **Shell-output compression (rtk).** [rtk](https://github.com/rtk-ai/rtk) is a
+   CLI proxy that understands 100+ dev commands and strips the noise from their
+   output — spinners, green "ok" lines, giant trees — before it ever reaches the
+   context (60–90% less on average). `rtk init -g` installs a hook that rewrites
+   Bash commands to their rtk equivalents transparently, so every command and
+   every subagent benefits with no per-command effort. This is orthogonal to the
+   agent-routing lever: routing decides *which model* reads the output; rtk
+   decides *how much* output there is to read.
+
 **The savings only materialize if the main thread delegates.** If the main model
 does all the grepping and editing itself, model routing buys nothing. Two ways
 to make delegation happen:
@@ -30,11 +41,18 @@ to make delegation happen:
 
 ## Recommended main-model posture
 
-- Default the main session to **Sonnet** (`/model sonnet`) for routine work;
-  the Haiku subagents do the heavy lifting under it.
-- Switch to **Opus** (`/model opus`) only for genuinely hard reasoning
-  (architecture design, tricky debugging). Delegate exploration to the cheap
-  agents even while on Opus.
+The installer sets `"model": "opusplan"` in `~/.claude/settings.json`, which
+picks the right model automatically:
+
+- **Plan mode → Opus.** Genuinely hard reasoning (architecture, tricky
+  debugging) runs on the strongest model, but only while you're planning.
+- **Everything else → Sonnet.** Routine execution runs on Sonnet, with the
+  Haiku subagents doing the heavy lifting under it.
+
+This is shared by the Claude Code CLI and the desktop app (same settings file),
+so both follow the same posture. You can still override per-session with
+`/model` — but with `opusplan` you rarely need to. Delegate exploration to the
+cheap agents regardless of which model the main thread is on.
 
 ## graphify is the context path — not grep
 
@@ -63,6 +81,11 @@ you lose the cheap path. Building the graph once per repo pays for itself fast.
 | Small surgical edit | `cavecrew-builder` |
 | Review a diff | `cavecrew-reviewer` (or `/code-review`) |
 | Keep code lazy/minimal | ponytail (active globally) |
+| Cut filler from output | caveman / i-have-adhd |
+| Cut shell-output tokens | rtk (transparent Bash hook) |
+| Monitor context / tools live | claude-hud statusline |
+| Find or build a skill | find-skills / skill-creator |
+| Drive a real browser | agent-browser |
 
 No dedicated planner/brainstorm agents ship here — superpowers already covers
 those, and duplicating them would be maintenance cost for no gain.
