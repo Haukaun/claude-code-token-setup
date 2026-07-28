@@ -4,9 +4,6 @@
 #   skills  → graphify installed via its own CLI; plugin skills come with plugins
 #   hooks   → graphify hint merged into ~/.claude/settings.json (plugin hooks
 #             come with plugins); commands also ship inside their plugins
-#
-# headroom is intentionally NOT part of *-install-all: it pulls a ~2GB PyPI
-# stack (torch/ML) and is a CLI-only proxy. Opt in with `just mac-install-headroom`.
 
 agents_dir := "agents"
 
@@ -18,7 +15,7 @@ default:
 # macOS / Linux
 # =====================================================================
 
-# Everything except headroom (agents + plugins + graphify + hooks).
+# Agents + plugins + graphify + hooks.
 mac-install-all: mac-install-plugins mac-install-graphify mac-install-agents mac-install-hooks
     @echo "Done. Restart Claude Code to load agents, plugins, and hooks."
 
@@ -46,17 +43,10 @@ mac-install-graphify:
 mac-install-hooks:
     python3 scripts/merge_settings.py
 
-# Optional, heavy (~2GB): headroom context-compression proxy.
-mac-install-headroom:
-    claude plugin marketplace add chopratejas/headroom || true
-    claude plugin install headroom
-    uv tool install "headroom-ai[all]" || pip install "headroom-ai[all]"
-    @echo "Installed headroom. It is CLI-only — run `headroom doctor`, then `headroom wrap claude`."
-
 # --- uninstalls ---
 
 mac-uninstall-all: mac-uninstall-hooks mac-uninstall-agents mac-uninstall-graphify mac-uninstall-plugins
-    @echo "Removed setup (headroom untouched — use mac-uninstall-headroom)."
+    @echo "Removed setup."
 
 mac-uninstall-agents:
     rm -f ~/.claude/agents/cavecrew-investigator.md \
@@ -78,12 +68,6 @@ mac-uninstall-graphify:
 
 mac-uninstall-hooks:
     python3 scripts/purge_settings.py
-
-mac-uninstall-headroom:
-    claude plugin uninstall headroom || true
-    claude plugin marketplace remove headroom-marketplace || true
-    uv tool uninstall headroom-ai || true
-    @echo "Removed headroom."
 
 # =====================================================================
 # Windows (PowerShell)
@@ -107,13 +91,8 @@ win-install-graphify:
 win-install-hooks:
     python scripts/merge_settings.py
 
-win-install-headroom:
-    -claude plugin marketplace add chopratejas/headroom
-    claude plugin install headroom
-    powershell -NoProfile -Command "uv tool install 'headroom-ai[all]'"
-
 win-uninstall-all: win-uninstall-hooks win-uninstall-agents win-uninstall-graphify win-uninstall-plugins
-    @echo "Removed setup (headroom untouched)."
+    @echo "Removed setup."
 
 win-uninstall-agents:
     powershell -NoProfile -Command "'cavecrew-investigator','cavecrew-builder','cavecrew-reviewer','cavecrew-investigator-deep' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\agents\$_.md\" }; Write-Host 'Removed CaveCrew agents.'"
@@ -129,8 +108,3 @@ win-uninstall-graphify:
 
 win-uninstall-hooks:
     python scripts/purge_settings.py
-
-win-uninstall-headroom:
-    -claude plugin uninstall headroom
-    -claude plugin marketplace remove headroom-marketplace
-    -powershell -NoProfile -Command "uv tool uninstall headroom-ai"

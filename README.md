@@ -19,7 +19,6 @@ The core idea: route grunt work (locate, edit) to **Haiku** and reserve **Sonnet
 
 - [superpowers](https://github.com/obra/superpowers-marketplace) — brainstorming, writing-plans, TDD, debugging, code-review skills.
 - [ponytail](https://github.com/DietrichGebert/ponytail) — lazy-code discipline (YAGNI, stdlib-first).
-- [headroom](https://github.com/chopratejas/headroom) — *optional, opt-in* context-compression proxy (see below).
 
 **Skills** — [graphify](https://github.com/Haukaun) knowledge graph, installed via its own CLI.
 
@@ -31,7 +30,7 @@ Planning/brainstorming agents are intentionally **not** shipped — superpowers 
 
 - [Claude Code](https://claude.com/claude-code) (the `claude` CLI on `PATH`)
 - [`just`](https://just.systems) — `brew install just` / `winget install Casey.Just`
-- [`uv`](https://astral.sh/uv) — for the graphify (and optional headroom) installs
+- [`uv`](https://astral.sh/uv) — for the graphify install
 - `python3` — for the settings-hook merge (standard on macOS/Linux)
 
 ## Install
@@ -40,7 +39,7 @@ Planning/brainstorming agents are intentionally **not** shipped — superpowers 
 git clone <this-repo>
 cd claude-code-token-setup
 
-# macOS / Linux — everything except headroom
+# macOS / Linux
 just mac-install-all
 
 # Windows (PowerShell)
@@ -56,26 +55,14 @@ just mac-install-agents     # CaveCrew subagents only
 just mac-install-plugins    # superpowers + ponytail
 just mac-install-graphify   # graphify CLI + skill
 just mac-install-hooks      # graphify hint hook (idempotent, non-clobbering)
-just mac-install-headroom   # optional, heavy — see below
 ```
 
 `just --list` shows every recipe (each has a `win-` twin).
 
-### headroom is opt-in
-
-headroom is excluded from `*-install-all` on purpose: it pulls a **~2GB** PyPI stack (torch/ML) and is a CLI-only proxy whose payoff is situational. Install it deliberately if you want it:
-
-```sh
-just mac-install-headroom
-```
-
-Then it needs activating per its own docs (`headroom doctor`, then `headroom wrap claude`). It does not integrate with Claude Code Desktop.
-
 ## Uninstall
 
 ```sh
-just mac-uninstall-all       # removes agents, plugins, graphify, hook (leaves headroom)
-just mac-uninstall-headroom  # if you installed it
+just mac-uninstall-all       # removes agents, plugins, graphify, hook
 ```
 
 The hook uninstall removes **only** this repo's hook (matched by a `graphify-out` marker) and leaves the rest of your `settings.json` untouched.
