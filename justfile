@@ -49,7 +49,8 @@ mac-install-skills:
     cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code
     cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code
     cd ~/.claude && npx -y skills add anthropics/skills --skill skill-creator --agent claude-code
-    @echo "Installed skills (find-skills, agent-browser, skill-creator)."
+    cd ~/.claude && npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code
+    @echo "Installed skills (find-skills, agent-browser, skill-creator, frontend-ui-engineering)."
 
 # rtk — Rust CLI-output token-killer + its transparent Bash-rewrite hook.
 # https://github.com/rtk-ai/rtk . `rtk init -g` writes the global Claude hook.
@@ -102,7 +103,7 @@ mac-uninstall-plugins:
 # Best-effort: dir names follow whatever each skill CLI created under ~/.claude/skills.
 mac-uninstall-skills:
     rm -rf ~/.claude/skills/find-skills ~/.claude/skills/agent-browser \
-           ~/.claude/skills/skill-creator
+           ~/.claude/skills/skill-creator ~/.claude/skills/frontend-ui-engineering
     -rmdir ~/.claude/skills 2>/dev/null
     @echo "Removed skills (best-effort)."
 
@@ -146,7 +147,7 @@ win-install-plugins:
 
 # Skills via `npx skills` into %USERPROFILE%\.claude\skills. Requires Node/npx.
 win-install-skills:
-    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\skills | Out-Null; Set-Location $env:USERPROFILE\.claude; npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code; npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code; npx -y skills add anthropics/skills --skill skill-creator --agent claude-code"
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\skills | Out-Null; Set-Location $env:USERPROFILE\.claude; npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code; npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code; npx -y skills add anthropics/skills --skill skill-creator --agent claude-code; npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code"
 
 win-install-graphify:
     powershell -NoProfile -Command "uv tool install graphifyy; graphify install --platform windows"
@@ -181,7 +182,7 @@ win-uninstall-plugins:
     powershell -NoProfile -Command "'.ponytail-active','.ponytail-statusline-nudged' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\$_\" }"
 
 win-uninstall-skills:
-    powershell -NoProfile -Command "'find-skills','agent-browser','skill-creator' | ForEach-Object { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\skills\$_\" }"
+    powershell -NoProfile -Command "'find-skills','agent-browser','skill-creator','frontend-ui-engineering' | ForEach-Object { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\skills\$_\" }"
 
 win-uninstall-rtk:
     -rtk init -g --uninstall
