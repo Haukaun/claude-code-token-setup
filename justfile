@@ -43,20 +43,21 @@ mac-install-plugins:
     @echo "Installed plugins (their hooks/commands/skills come bundled)."
 
 # Skills via the `npx skills` CLI (github.com/vercel-labs/skills), installed into
-# the user-global ~/.claude/skills. Requires Node/npx.
+# the user-global ~/.claude/skills. Requires Node/npx. -g/--global is required —
+# without it the CLI installs project-level, nesting a stray .claude/skills under cwd.
 mac-install-skills:
     mkdir -p ~/.claude/skills
-    cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code
-    cd ~/.claude && npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code
-    cd ~/.claude && npx -y skills add anthropics/skills --skill skill-creator --agent claude-code
-    cd ~/.claude && npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code
+    npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code -g -y
+    npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code -g -y
+    npx -y skills add anthropics/skills --skill skill-creator --agent claude-code -g -y
+    npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code -g -y
     @echo "Installed skills (find-skills, agent-browser, skill-creator, frontend-ui-engineering)."
 
 # rtk — Rust CLI-output token-killer + its transparent Bash-rewrite hook.
 # https://github.com/rtk-ai/rtk . `rtk init -g` writes the global Claude hook.
 mac-install-rtk:
     brew install rtk || curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | sh
-    rtk init -g
+    rtk init -g --auto-patch
     @echo "Installed rtk + global hook. Restart Claude Code; verify with 'rtk init --show'."
 
 # graphify CLI + skill (knowledge graph). Requires uv (https://astral.sh/uv).
@@ -131,7 +132,7 @@ win-install-all: win-install-plugins win-install-skills win-install-graphify win
     @echo "Done. Restart Claude Code."
 
 win-install-agents:
-    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\agents | Out-Null; Copy-Item {{agents_dir}}\*.md $env:USERPROFILE\.claude\agents\ -Force; Write-Host 'Installed CaveCrew agents.'"
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path \$env:USERPROFILE\.claude\agents | Out-Null; Copy-Item {{agents_dir}}\*.md \$env:USERPROFILE\.claude\agents\ -Force; Write-Host 'Installed CaveCrew agents.'"
 
 win-install-plugins:
     -claude plugin marketplace add obra/superpowers-marketplace
@@ -145,28 +146,29 @@ win-install-plugins:
     claude plugin install i-have-adhd@i-have-adhd
     claude plugin install claude-hud@claude-hud
 
-# Skills via `npx skills` into %USERPROFILE%\.claude\skills. Requires Node/npx.
+# Skills via `npx skills` into %USERPROFILE%\.claude\skills. Requires Node/npx. -g/--global
+# is required — without it the CLI installs project-level, nesting a stray .claude\skills under cwd.
 win-install-skills:
-    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\skills | Out-Null; Set-Location $env:USERPROFILE\.claude; npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code; npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code; npx -y skills add anthropics/skills --skill skill-creator --agent claude-code; npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code"
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path \$env:USERPROFILE\.claude\skills | Out-Null; Set-Location \$env:USERPROFILE; npx -y skills add mgiovani/cc-arsenal --skill find-skills --agent claude-code -g -y; npx -y skills add mgiovani/cc-arsenal --skill agent-browser --agent claude-code -g -y; npx -y skills add anthropics/skills --skill skill-creator --agent claude-code -g -y; npx -y skills add addyosmani/agent-skills --skill frontend-ui-engineering --agent claude-code -g -y"
 
 win-install-graphify:
     powershell -NoProfile -Command "uv tool install graphifyy; graphify install --platform windows"
 
-# rtk — download the Windows release zip, put rtk.exe on PATH, then init the hook.
-# See https://github.com/rtk-ai/rtk/releases . Alternative: cargo install --git .
+# rtk — download the Windows release zip, put rtk.exe on ~\.local\bin (on PATH), then init the hook.
+# See https://github.com/rtk-ai/rtk/releases . Falls back to cargo install if present.
 win-install-rtk:
-    -cargo install --git https://github.com/rtk-ai/rtk
-    rtk init -g
+    powershell -NoProfile -Command "if (Get-Command rtk -ErrorAction SilentlyContinue) { Write-Host 'rtk already installed.' } elseif (Get-Command cargo -ErrorAction SilentlyContinue) { cargo install --git https://github.com/rtk-ai/rtk } else { $ErrorActionPreference='Stop'; $bin = \"$env:USERPROFILE\.local\bin\"; New-Item -ItemType Directory -Force -Path $bin | Out-Null; $zip = Join-Path $env:TEMP 'rtk.zip'; $url = (Invoke-RestMethod https://api.github.com/repos/rtk-ai/rtk/releases/latest).assets | Where-Object { $_.name -like '*pc-windows-msvc.zip' } | Select-Object -First 1 -ExpandProperty browser_download_url; Invoke-WebRequest -Uri $url -OutFile $zip; Expand-Archive -Path $zip -DestinationPath $bin -Force; Remove-Item $zip; if (($env:PATH -split ';') -notcontains $bin) { [Environment]::SetEnvironmentVariable('Path', \"$([Environment]::GetEnvironmentVariable('Path','User'));$bin\", 'User'); $env:PATH += \";$bin\" }; Write-Host \"Installed rtk.exe to $bin\" }"
+    rtk init -g --auto-patch
 
 win-install-hooks:
-    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path $env:USERPROFILE\.claude\hooks | Out-Null; Copy-Item scripts\security_guard.py $env:USERPROFILE\.claude\hooks\ -Force"
-    python scripts/merge_settings.py
+    powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path \$env:USERPROFILE\.claude\hooks | Out-Null; Copy-Item scripts\security_guard.py \$env:USERPROFILE\.claude\hooks\ -Force"
+    uv run --no-project python scripts/merge_settings.py
 
 win-uninstall-all: win-uninstall-hooks win-uninstall-agents win-uninstall-graphify win-uninstall-rtk win-uninstall-skills win-uninstall-plugins
     @echo "Removed setup."
 
 win-uninstall-agents:
-    powershell -NoProfile -Command "'cavecrew-investigator','cavecrew-builder','cavecrew-reviewer','cavecrew-investigator-deep' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\agents\$_.md\" }; Write-Host 'Removed CaveCrew agents.'"
+    powershell -NoProfile -Command "'cavecrew-investigator','cavecrew-builder','cavecrew-reviewer','cavecrew-investigator-deep' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"\$env:USERPROFILE\.claude\agents\\\$_.md\" }; Write-Host 'Removed CaveCrew agents.'"
 
 win-uninstall-plugins:
     -claude plugin uninstall superpowers
@@ -179,18 +181,18 @@ win-uninstall-plugins:
     -claude plugin marketplace remove caveman
     -claude plugin marketplace remove i-have-adhd
     -claude plugin marketplace remove claude-hud
-    powershell -NoProfile -Command "'.ponytail-active','.ponytail-statusline-nudged' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\$_\" }"
+    powershell -NoProfile -Command "'.ponytail-active','.ponytail-statusline-nudged' | ForEach-Object { Remove-Item -Force -ErrorAction SilentlyContinue \"\$env:USERPROFILE\.claude\\\$_\" }"
 
 win-uninstall-skills:
-    powershell -NoProfile -Command "'find-skills','agent-browser','skill-creator','frontend-ui-engineering' | ForEach-Object { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:USERPROFILE\.claude\skills\$_\" }"
+    powershell -NoProfile -Command "'find-skills','agent-browser','skill-creator','frontend-ui-engineering' | ForEach-Object { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"\$env:USERPROFILE\.claude\skills\\\$_\" }"
 
 win-uninstall-rtk:
     -rtk init -g --uninstall
-    powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"$env:APPDATA\rtk\", \"$env:USERPROFILE\.config\rtk\""
+    powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue \"\$env:APPDATA\rtk\", \"\$env:USERPROFILE\.config\rtk\""
 
 win-uninstall-graphify:
     -graphify uninstall
 
 win-uninstall-hooks:
-    python scripts/purge_settings.py
-    powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue $env:USERPROFILE\.claude\hooks\security_guard.py"
+    uv run --no-project python scripts/purge_settings.py
+    powershell -NoProfile -Command "Remove-Item -Force -ErrorAction SilentlyContinue \$env:USERPROFILE\.claude\hooks\security_guard.py"

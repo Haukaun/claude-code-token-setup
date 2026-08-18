@@ -4,7 +4,7 @@
   "hooks": [
     {
       "type": "command",
-      "command": "python3 \"$HOME/.claude/hooks/security_guard.py\"",
+      "command": "PY=python3; python3 -c '' >/dev/null 2>&1 || PY=python; $PY -c '' >/dev/null 2>&1 || PY=\"uv run --no-project python\"; $PY \"$HOME/.claude/hooks/security_guard.py\"",
       "statusMessage": "Security guard"
     }
   ]
